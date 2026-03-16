@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BracketPulse | 2026 Official AI Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #050810; color: #e2e8f0; overflow-x: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.05); }
+        .active-entry { border-color: #10b981 !important; background: rgba(16, 185, 129, 0.1) !important; }
+        
+        /* Region Gradients */
+        .bg-east { background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 70%); border-left: 3px solid #10b981; }
+        .bg-west { background: radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 70%); border-right: 3px solid #0ea5e9; }
+        .bg-south { background: radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.12), transparent 70%); border-left: 3px solid #f59e0b; }
+        .bg-midwest { background: radial-gradient(circle at bottom right, rgba(244, 63, 94, 0.12), transparent 70%); border-right: 3px solid #f43f5e; }
+        
+        @media (min-width: 1280px) { .mirror-desktop { flex-direction: row-reverse; } .text-right-desktop { text-align: right; } }
+        @media (max-width: 1279px) { 
+            .mirror-desktop { flex-direction: row; } 
+            .bg-west, .bg-midwest { border-right: 0; border-left: 3px solid currentColor; }
+        }
+
+        ::-webkit-scrollbar { height: 4px; width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .team-box { font-size: 9px; line-height: 1.1; padding: 4px 6px; min-width: 85px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <nav class="px-6 py-3 flex justify-between items-center border-b border-white/5 bg-slate-900/90 sticky top-0 z-50">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 bg-emerald-500 rounded flex items-center justify-center font-black text-slate-900 text-sm">B</div>
+            <span class="text-xl font-bold tracking-tighter uppercase italic text-white tracking-widest">Bracket<span class="text-emerald-400">Pulse</span></span>
+        </div>
+        <div class="hidden md:block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Official 2026 Selection Sunday Matchups</div>
+    </nav>
+
+    <div class="flex flex-col xl:flex-row flex-1">
+        <!-- SIDEBAR -->
+        <aside class="w-full xl:w-64 border-r border-white/5 p-6 bg-slate-900/20 flex flex-col gap-5 order-2 xl:order-1">
+            <div class="space-y-4 text-center">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Chaos Intensity</label>
+                <input type="range" id="chaos-slider" min="0.01" max="0.06" step="0.01" value="0.02" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400">
+                <div id="persona-badge" class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">The Accountant</div>
+                
+                <button onclick="generateNewBatch()" class="w-full bg-emerald-500 text-slate-950 font-black py-3 rounded-lg text-xs uppercase italic hover:bg-emerald-400 transition shadow-lg">Generate 25 Brackets</button>
+                <a href="YOUR_DK_AFFILIATE_LINK" target="_blank" class="w-full block bg-slate-800 border border-emerald-500/30 text-white font-bold py-3 rounded-lg text-[10px] uppercase tracking-widest hover:bg-slate-700 transition">💰 Bet on DraftKings</a>
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="shareToX()" class="bg-slate-950 border border-white/10 text-white font-bold py-2 rounded-lg text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/5 transition italic">Share</button>
+                    <button onclick="downloadCSV()" class="bg-slate-950 border border-white/10 text-white font-bold py-2 rounded-lg text-[9px] uppercase tracking-widest hover:bg-white/5 transition italic">CSV</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-1 pr-2 max-h-64 xl:max-h-none" id="batch-list"></div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 p-4 lg:p-6 flex flex-col gap-6 order-1 xl:order-2">
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="glass rounded-2xl p-4 flex flex-col justify-center items-center gap-2 border-l-2 border-emerald-500" id="f4-left"></div>
+                
+                <div class="glass rounded-2xl p-5 border-2 border-emerald-500/30 text-center relative overflow-hidden bg-emerald-500/5">
+                    <span class="text-[9px] font-black tracking-[0.4em] text-emerald-500 uppercase block mb-1">National Championship</span>
+                    <div class="flex justify-center items-center gap-4 my-2 text-white font-black italic uppercase tracking-tighter">
+                        <span id="finalist-1" class="text-xl">--</span>
+                        <span class="text-slate-600 text-xs">VS</span>
+                        <span id="finalist-2" class="text-xl">--</span>
+                    </div>
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        Score: <span id="score-1" class="text-emerald-400">0</span> - <span id="score-2" class="text-emerald-400">0</span>
+                    </div>
+                    <div class="mt-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                        Tie-Breaker Total: <span id="tie-breaker" class="text-white">0</span>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl p-4 flex flex-col justify-center items-center gap-2 border-r-2 border-sky-500" id="f4-right"></div>
+            </section>
+
+            <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 flex-1">
+                <div class="glass rounded-2xl p-4 bg-east overflow-hidden"><h4 class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mb-3 italic">East Region</h4><div class="overflow-x-auto pb-2"><div class="inline-flex gap-2 min-w-max" id="canvas-East"></div></div></div>
+                <div class="glass rounded-2xl p-4 bg-west overflow-hidden"><h4 class="text-[9px] font-bold text-sky-400 uppercase tracking-widest mb-3 text-right-desktop italic text-right">West Region</h4><div class="overflow-x-auto pb-2"><div class="inline-flex gap-2 min-w-max mirror-desktop" id="canvas-West"></div></div></div>
+                <div class="glass rounded-2xl p-4 bg-south overflow-hidden"><h4 class="text-[9px] font-bold text-amber-500 uppercase tracking-widest mb-3 italic">South Region</h4><div class="overflow-x-auto pb-2"><div class="inline-flex gap-2 min-w-max" id="canvas-South"></div></div></div>
+                <div class="glass rounded-2xl p-4 bg-midwest overflow-hidden"><h4 class="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-3 text-right-desktop italic text-right">Midwest Region</h4><div class="overflow-x-auto pb-2"><div class="inline-flex gap-2 min-w-max mirror-desktop" id="canvas-Midwest"></div></div></div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const TOURNAMENT_DATA = {
+            "East": [{s:1,n:"Duke"},{s:16,n:"Siena"},{s:8,n:"Ohio St"},{s:9,n:"TCU"},{s:5,n:"St Johns"},{s:12,n:"N. Iowa"},{s:4,n:"Kansas"},{s:13,n:"Cal Bapt"},{s:6,n:"L'ville"},{s:11,n:"S. Florida"},{s:3,n:"Mich St"},{s:14,n:"ND St"},{s:7,n:"UCLA"},{s:10,n:"UCF"},{s:2,n:"UConn"},{s:15,n:"Furman"}],
+            "West": [{s:1,n:"Arizona"},{s:16,n:"LIU"},{s:8,n:"Villanova"},{s:9,n:"Utah St"},{s:5,n:"Wisconsin"},{s:12,n:"High Pt"},{s:4,n:"Arkansas"},{s:13,n:"Hawaii"},{s:6,n:"BYU"},{s:11,n:"Texas"},{s:3,n:"Gonzaga"},{s:14,n:"Kennesaw"},{s:7,n:"Miami"},{s:10,n:"Missouri"},{s:2,n:"Purdue"},{s:15,n:"Queens"}],
+            "South": [{s:1,n:"Florida"},{s:16,n:"Lehigh"},{s:8,n:"Clemson"},{s:9,n:"Iowa"},{s:5,n:"Vanderbilt"},{s:12,n:"McNeese"},{s:4,n:"Nebraska"},{s:13,n:"Troy"},{s:6,n:"UNC"},{s:11,n:"VCU"},{s:3,n:"Illinois"},{s:14,n:"Penn"},{s:7,n:"St Marys"},{s:10,n:"TX A&M"},{s:2,n:"Houston"},{s:15,n:"Idaho"}],
+            "Midwest": [{s:1,n:"Michigan"},{s:16,n:"Howard"},{s:8,n:"Georgia"},{s:9,n:"St Louis"},{s:5,n:"Texas Tech"},{s:12,n:"Akron"},{s:4,n:"Alabama"},{s:13,n:"Hofstra"},{s:6,n:"Tennessee"},{s:11,n:"SMU"},{s:3,n:"Virginia"},{s:14,n:"Wright St"},{s:7,n:"Kentucky"},{s:10,n:"Santa Clara"},{s:2,n:"Iowa St"},{s:15,n:"Tenn St"}]
+        };
+
+        let currentBatch = [];
+        let activeIndex = 0;
+
+        function getWinProb(t1, t2, chaos) {
+            let prob = 0.5 + (t2.s - t1.s) * (0.07 - chaos);
+            return Math.max(0.05, Math.min(0.95, prob));
+        }
+
+        function simulateFull(chaos) {
+            const results = {};
+            const f4_winners = [];
+            Object.keys(TOURNAMENT_DATA).forEach(region => {
+                let rounds = [];
+                let current = [...TOURNAMENT_DATA[region].map(t => ({...t, region}))];
+                rounds.push([...current]);
+                while (current.length > 1) {
+                    let next = [];
+                    for (let i = 0; i < current.length; i += 2) {
+                        let prob = 0.5 + (current[i+1].s - current[i].s) * (0.07 - chaos);
+                        next.push(Math.random() < Math.max(0.05, Math.min(0.95, prob)) ? current[i] : current[i+1]);
+                    }
+                    rounds.push(next);
+                    current = next;
+                }
+                results[region] = rounds;
+                f4_winners.push(current[0]);
+            });
+            const winner = f4_winners[Math.floor(Math.random() * 4)];
+            const runnerUp = f4_winners.find(t => t.n !== winner.n) || f4_winners[0];
+            const s1 = 72 + Math.floor(Math.random() * 15);
+            const s2 = s1 - (2 + Math.floor(Math.random() * 8));
+            return { regs: results, f4: f4_winners, winner, finalist1: winner, finalist2: runnerUp, s1, s2 };
+        }
+
+        function generateNewBatch() {
+            const chaos = parseFloat(document.getElementById('chaos-slider').value);
+            currentBatch = Array.from({length: 25}, () => simulateFull(chaos));
+            viewEntry(0);
+        }
+
+        function viewEntry(idx) {
+            activeIndex = idx;
+            const data = currentBatch[idx];
+            
+            document.getElementById('finalist-1').innerText = data.finalist1.n;
+            document.getElementById('finalist-2').innerText = data.finalist2.n;
+            document.getElementById('score-1').innerText = data.s1;
+            document.getElementById('score-2').innerText = data.s2;
+            document.getElementById('tie-breaker').innerText = data.s1 + data.s2;
+
+            document.getElementById('f4-left').innerHTML = `<div class="text-[10px] font-black text-emerald-400 uppercase text-center">${data.f4[0].n} <br><span class='text-slate-700 italic text-[7px]'>vs</span><br> ${data.f4[2].n}</div>`;
+            document.getElementById('f4-right').innerHTML = `<div class="text-[10px] font-black text-sky-400 uppercase text-center">${data.f4[1].n} <br><span class='text-slate-700 italic text-[7px]'>vs</span><br> ${data.f4[3].n}</div>`;
+
+            Object.keys(data.regs).forEach(reg => {
+                const canvas = document.getElementById(`canvas-${reg}`);
+                canvas.innerHTML = '';
+                data.regs[reg].forEach(round => {
+                    const col = document.createElement('div');
+                    col.className = "flex flex-col justify-around gap-1 w-20";
+                    round.forEach(t => {
+                        const box = document.createElement('div');
+                        box.className = "bg-slate-900 border border-white/5 rounded text-center team-box truncate text-white uppercase italic font-black shadow-lg";
+                        box.innerText = t.n;
+                        col.appendChild(box);
+                    });
+                    canvas.appendChild(col);
+                });
+            });
+            updateBatchList();
+        }
+
+        function updateBatchList() {
+            const list = document.getElementById('batch-list');
+            list.innerHTML = currentBatch.map((e, i) => `
+                <button onclick="viewEntry(${i})" class="w-full text-left px-3 py-2 rounded border border-white/5 transition flex justify-between items-center ${i === activeIndex ? 'active-entry' : 'hover:bg-white/5'}">
+                    <div class="overflow-hidden">
+                        <div class="text-[7px] font-bold uppercase text-slate-500">Entry #${i+1}</div>
+                        <div class="text-[9px] font-black uppercase truncate ${i === activeIndex ? 'text-emerald-400' : 'text-slate-300'}">${e.winner.n}</div>
+                    </div>
+                    <div class="text-[9px] font-black text-slate-600">#${e.winner.s}</div>
+                </button>`).join('');
+        }
+
+        function downloadCSV() {
+            const data = currentBatch[activeIndex];
+            let csv = "Region,Round,Winner\n";
+            Object.keys(data.regs).forEach(reg => data.regs[reg].forEach((round, rIdx) => round.forEach(t => csv += `${reg},R${rIdx+1},${t.n}\n`)));
+            csv += `\nChamp,${data.winner.n},Tie-Breaker,${data.s1+data.s2}\n`;
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `Bracket_Entry_${activeIndex+1}.csv`; a.click();
+        }
+
+        function shareToX() {
+            const e = currentBatch[activeIndex];
+            const text = encodeURIComponent(`Check out my AI-generated 2026 bracket! Predicted ${e.winner.n} to win it all. 🏀🏆`);
+            window.open(`https://twitter.com{text}&url=${encodeURIComponent(window.location.href)}`, '_blank');
+        }
+
+        document.getElementById('chaos-slider').oninput = function() {
+            const val = parseFloat(this.value);
+            const badge = document.getElementById('persona-badge');
+            badge.innerText = val < 0.02 ? "THE ACCOUNTANT" : val < 0.05 ? "BRACKET BUSTER" : "CHAOS AGENT";
+            badge.className = `text-[9px] font-black mt-2 text-center uppercase tracking-widest ${val < 0.02 ? 'text-emerald-400' : val < 0.05 ? 'text-amber-400' : 'text-red-400'}`;
+        };
+        window.onload = generateNewBatch;
+    </script>
+</body>
+</html>
